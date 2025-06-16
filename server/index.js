@@ -16,18 +16,33 @@ const app = express();
 
 // Middleware
 app.use(express.json());
+
+// Debug middleware to log requests
+app.use((req, res, next) => {
+  console.log('Request:', {
+    method: req.method,
+    path: req.path,
+    cookies: req.cookies,
+    session: req.session,
+    headers: req.headers
+  });
+  next();
+});
+
+// CORS configuration
 app.use(cors({
   origin: process.env.CLIENT_URL,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  exposedHeaders: ['Set-Cookie']
 }));
 
 // Session configuration with MongoDB store
 app.use(session({
   secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
+  resave: true, // Changed to true for debugging
+  saveUninitialized: true, // Changed to true for debugging
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
     ttl: 24 * 60 * 60 // Session TTL in seconds (1 day)
@@ -35,9 +50,9 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    sameSite: 'none', // Always set to none for cross-site requests
     maxAge: 24 * 60 * 60 * 1000, // Cookie max age in milliseconds (1 day)
-    domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
+    path: '/'
   }
 }));
 
@@ -89,8 +104,13 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     req.session.userId = user._id;
-    res.json({ message: 'Logged in successfully' });
+    console.log('Login successful, session:', req.session);
+    res.json({ 
+      message: 'Logged in successfully',
+      sessionId: req.session.id // Include session ID in response for debugging
+    });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -154,8 +174,13 @@ app.post('/api/execute', isAuthenticated, async (req, res) => {
 });
 
 // Check authentication status
-app.get('/api/check-auth', isAuthenticated, (req, res) => {
-  res.json({ authenticated: true });
+app.get('/api/check-auth', (req, res) => {
+  console.log('Check auth session:', req.session);
+  if (req.session.userId) {
+    res.json({ authenticated: true, userId: req.session.userId });
+  } else {
+    res.status(401).json({ error: 'Not authenticated' });
+  }
 });
 
 const PORT = process.env.PORT || 5000;

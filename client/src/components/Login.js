@@ -33,9 +33,16 @@ function Login() {
     setError('');
 
     try {
-      await axios.post(`${API_URL}/api/login`, formData);
+      const response = await axios.post(`${API_URL}/api/login`, formData, {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('Login response:', response.data);
       navigate('/dashboard');
     } catch (err) {
+      console.error('Login error:', err);
       setError(err.response?.data?.error || 'Login failed. Please try again.');
     }
   };
