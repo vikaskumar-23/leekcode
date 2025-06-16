@@ -19,21 +19,7 @@ app.use(express.json());
 
 // CORS configuration
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Remove trailing slash if present
-    const cleanOrigin = origin?.replace(/\/$/, '');
-    const allowedOrigins = [
-      process.env.CLIENT_URL?.replace(/\/$/, ''),
-      'http://localhost:3000',
-      'https://leekcode.vercel.app'
-    ];
-    
-    if (!origin || allowedOrigins.includes(cleanOrigin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Allow all origins in development
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
@@ -43,7 +29,7 @@ app.use(cors(corsOptions));
 
 // Session configuration with MongoDB store
 app.use(session({
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
@@ -51,11 +37,10 @@ app.use(session({
     ttl: 24 * 60 * 60 // Session TTL in seconds (1 day)
   }),
   cookie: {
-    secure: true, // Always use secure cookies in production
+    secure: process.env.NODE_ENV === 'production', // Only use secure cookies in production
     httpOnly: true,
-    sameSite: 'none', // Required for cross-origin requests
-    maxAge: 24 * 60 * 60 * 1000, // Cookie max age in milliseconds (1 day)
-    domain: process.env.COOKIE_DOMAIN || '.onrender.com' // Allow cookies on subdomains
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Use 'lax' in development
+    maxAge: 24 * 60 * 60 * 1000 // Cookie max age in milliseconds (1 day)
   }
 }));
 
