@@ -3,7 +3,7 @@
  * Handles user login and redirects to dashboard on success
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
@@ -18,6 +18,24 @@ function Login() {
     password: ''
   });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/check-auth`, {
+          withCredentials: true
+        });
+        if (response.data.authenticated) {
+          navigate('/dashboard');
+        }
+      } catch (err) {
+        console.log('Not authenticated');
+      }
+    };
+    checkAuth();
+  }, [navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -29,12 +47,33 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
     try {
-      await axios.post(`${API_URL}/api/login`, formData);
-      navigate('/dashboard');
+      const response = await axios.post(`${API_URL}/api/login`, formData, {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data.message === 'Logged in successfully') {
+        // Verify the session was set
+        const authCheck = await axios.get(`${API_URL}/api/check-auth`, {
+          withCredentials: true
+        });
+        
+        if (authCheck.data.authenticated) {
+          navigate('/dashboard');
+        } else {
+          setError('Session not established. Please try again.');
+        }
+      }
     } catch (err) {
+      console.error('Login error:', err);
       setError(err.response?.data?.error || 'Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -63,6 +102,7 @@ function Login() {
                     value={formData.username}
                     onChange={handleChange}
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -76,12 +116,24 @@ function Login() {
                     value={formData.password}
                     onChange={handleChange}
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
                 <div className="d-grid gap-2">
-                  <button type="submit" className="btn btn-primary">
-                    Login
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Logging in...
+                      </>
+                    ) : (
+                      'Login'
+                    )}
                   </button>
                 </div>
               </form>

@@ -93,17 +93,39 @@ app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     const user = await User.findOne({ username });
+    
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+    
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    // Set user ID in session
     req.session.userId = user._id;
-    res.json({ message: 'Logged in successfully' });
+    
+    // Save session explicitly
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).json({ error: 'Failed to establish session' });
+      }
+      
+      // Verify session was set
+      if (req.session.userId) {
+        res.json({ 
+          message: 'Logged in successfully',
+          user: { id: user._id, username: user.username }
+        });
+      } else {
+        res.status(500).json({ error: 'Session not established' });
+      }
+    });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
