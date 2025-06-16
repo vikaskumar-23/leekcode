@@ -3,7 +3,7 @@
  * Handles user login and redirects to dashboard on success
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
@@ -19,23 +19,6 @@ function Login() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  // Check if user is already logged in
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/api/check-auth`, {
-          withCredentials: true
-        });
-        if (response.data.authenticated) {
-          navigate('/dashboard');
-        }
-      } catch (err) {
-        console.log('Not authenticated');
-      }
-    };
-    checkAuth();
-  }, [navigate]);
 
   const handleChange = (e) => {
     setFormData({

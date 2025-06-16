@@ -8,6 +8,8 @@ function ProtectedRoute({ children }) {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkAuth = async () => {
       try {
         const response = await axios.get(`${API_URL}/api/check-auth`, {
@@ -16,19 +18,29 @@ function ProtectedRoute({ children }) {
             'Content-Type': 'application/json'
           }
         });
-        if (response.data.authenticated) {
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
-          navigate('/login');
+        
+        if (isMounted) {
+          if (response.data.authenticated) {
+            setIsAuthenticated(true);
+          } else {
+            setIsAuthenticated(false);
+            navigate('/login');
+          }
         }
       } catch (err) {
         console.error('Auth check failed:', err);
-        setIsAuthenticated(false);
-        navigate('/login');
+        if (isMounted) {
+          setIsAuthenticated(false);
+          navigate('/login');
+        }
       }
     };
+
     checkAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, [navigate]);
 
   if (isAuthenticated === null) {
