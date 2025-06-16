@@ -24,7 +24,8 @@ const corsOptions = {
     const cleanOrigin = origin?.replace(/\/$/, '');
     const allowedOrigins = [
       process.env.CLIENT_URL?.replace(/\/$/, ''),
-      'http://localhost:3000'
+      'http://localhost:3000',
+      'https://leekcode.vercel.app'
     ];
     
     if (!origin || allowedOrigins.includes(cleanOrigin)) {
@@ -35,7 +36,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
 };
 
 app.use(cors(corsOptions));
@@ -50,10 +51,11 @@ app.use(session({
     ttl: 24 * 60 * 60 // Session TTL in seconds (1 day)
   }),
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: true, // Always use secure cookies in production
     httpOnly: true,
     sameSite: 'none', // Required for cross-origin requests
-    maxAge: 24 * 60 * 60 * 1000 // Cookie max age in milliseconds (1 day)
+    maxAge: 24 * 60 * 60 * 1000, // Cookie max age in milliseconds (1 day)
+    domain: process.env.COOKIE_DOMAIN || '.onrender.com' // Allow cookies on subdomains
   }
 }));
 
