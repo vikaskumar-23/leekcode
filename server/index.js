@@ -19,10 +19,23 @@ app.use(express.json());
 
 // CORS configuration
 const corsOptions = {
-  origin: true, // Allow all origins in development
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'https://leekcode.vercel.app',
+      'https://leekcode-8xuy3e17u-acs-projects-ff555b9d.vercel.app',
+      'http://localhost:3000'
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  exposedHeaders: ['Set-Cookie']
 };
 
 app.use(cors(corsOptions));
@@ -30,17 +43,18 @@ app.use(cors(corsOptions));
 // Session configuration with MongoDB store
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
-  resave: false,
-  saveUninitialized: false,
+  resave: true,
+  saveUninitialized: true,
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
     ttl: 24 * 60 * 60 // Session TTL in seconds (1 day)
   }),
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // Only use secure cookies in production
+    secure: true,
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Use 'lax' in development
-    maxAge: 24 * 60 * 60 * 1000 // Cookie max age in milliseconds (1 day)
+    sameSite: 'none',
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+    domain: '.vercel.app' // Allow cookies on all Vercel subdomains
   }
 }));
 
