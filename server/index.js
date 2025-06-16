@@ -5,6 +5,7 @@ const session = require('express-session');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
+const MongoStore = require('connect-mongo');
 
 const User = require('./models/User');
 const Problem = require('./models/Problem');
@@ -23,9 +24,14 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    ttl: 24 * 60 * 60 // Session TTL in seconds (1 day)
+  }),
   cookie: {
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // Cookie max age in milliseconds (1 day)
   }
 }));
 
