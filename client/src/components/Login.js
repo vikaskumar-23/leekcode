@@ -10,6 +10,9 @@ import axios from 'axios';
 // Configure axios to include credentials
 axios.defaults.withCredentials = true;
 
+// Get API URL from environment variable
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -30,7 +33,7 @@ function Login() {
     setError('');
 
     try {
-      await axios.post('http://localhost:5000/api/login', formData);
+      await axios.post(`${API_URL}/api/login`, formData);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
