@@ -8,40 +8,22 @@ function ProtectedRoute({ children }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    let isMounted = true;
-
     const checkAuth = async () => {
       try {
+        console.log('Checking authentication status...');
         const response = await axios.get(`${API_URL}/api/check-auth`, {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          withCredentials: true
         });
-        
-        if (isMounted) {
-          if (response.data.authenticated) {
-            setIsAuthenticated(true);
-          } else {
-            setIsAuthenticated(false);
-            navigate('/login');
-          }
-        }
-      } catch (err) {
-        console.error('Auth check failed:', err);
-        if (isMounted) {
-          setIsAuthenticated(false);
-          navigate('/login');
-        }
+        console.log('Auth check response:', response.data);
+        setIsAuthenticated(response.data.authenticated);
+      } catch (error) {
+        console.error('Auth check error:', error);
+        setIsAuthenticated(false);
       }
     };
 
     checkAuth();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [navigate]);
+  }, []);
 
   if (isAuthenticated === null) {
     return (
@@ -53,7 +35,12 @@ function ProtectedRoute({ children }) {
     );
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    console.log('Not authenticated, redirecting to login...');
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
 }
 
 export default ProtectedRoute; 
