@@ -7,8 +7,9 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
-// Configure axios to include credentials
+// Configure axios defaults
 axios.defaults.withCredentials = true;
+axios.defaults.headers.common['Content-Type'] = 'application/json';
 
 // Get API URL from environment variable
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -40,7 +41,11 @@ function Login() {
         }
       });
       console.log('Login response:', response.data);
-      navigate('/dashboard');
+      
+      // Wait a bit to ensure cookie is set
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 100);
     } catch (err) {
       console.error('Login error:', err);
       setError(err.response?.data?.error || 'Login failed. Please try again.');
