@@ -6,6 +6,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const MongoStore = require('connect-mongo');
+const cookieParser = require('cookie-parser');
 
 const User = require('./models/User');
 const Problem = require('./models/Problem');
@@ -18,14 +19,14 @@ const app = express();
 app.use(express.json());
 
 // CORS configuration
+const allowedOrigins = [
+  'https://leekcode.vercel.app',
+  'https://leekcode-8xuy3e17u-acs-projects-ff555b9d.vercel.app',
+  'http://localhost:3000'
+];
+
 const corsOptions = {
   origin: function (origin, callback) {
-    const allowedOrigins = [
-      'https://leekcode.vercel.app',
-      'https://leekcode-8xuy3e17u-acs-projects-ff555b9d.vercel.app',
-      'http://localhost:3000'
-    ];
-    
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -34,32 +35,30 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-  exposedHeaders: ['Set-Cookie']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['set-cookie']
 };
 
 app.use(cors(corsOptions));
+app.use(cookieParser());
 
-// Session configuration with MongoDB store
+// Session configuration
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
-  resave: true,
-  saveUninitialized: true,
+  resave: false,
+  saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
-    ttl: 24 * 60 * 60 // Session TTL in seconds (1 day)
+    ttl: 24 * 60 * 60 // 1 day
   }),
   cookie: {
     secure: true,
     httpOnly: true,
     sameSite: 'none',
     maxAge: 24 * 60 * 60 * 1000, // 1 day
-    domain: '.onrender.com' // Change to match your backend domain
+    domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
   }
 }));
-
-// Add cookie parser middleware
-app.use(require('cookie-parser')());
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/leakcode')
@@ -96,48 +95,40 @@ app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     const user = await User.findOne({ username });
-    
+
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
-    
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Set user ID in session
     req.session.userId = user._id;
-    
-    // Save session explicitly
+
+    // Explicitly save session
     req.session.save((err) => {
       if (err) {
         console.error('Session save error:', err);
-        return res.status(500).json({ error: 'Failed to establish session' });
+        return res.status(500).json({ message: 'Error establishing session' });
       }
-      
+
       // Set cookie manually
       res.cookie('connect.sid', req.session.id, {
         secure: true,
         httpOnly: true,
         sameSite: 'none',
-        domain: '.onrender.com',
-        maxAge: 24 * 60 * 60 * 1000
+        maxAge: 24 * 60 * 60 * 1000, // 1 day
+        domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
       });
-      
-      // Verify session was set
-      if (req.session.userId) {
-        res.json({ 
-          message: 'Logged in successfully',
-          user: { id: user._id, username: user.username }
-        });
-      } else {
-        res.status(500).json({ error: 'Session not established' });
-      }
+
+      res.json({ message: 'Login successful' });
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -200,8 +191,18 @@ app.post('/api/execute', isAuthenticated, async (req, res) => {
 });
 
 // Check authentication status
-app.get('/api/check-auth', isAuthenticated, (req, res) => {
-  res.json({ authenticated: true });
+app.get('/api/check-auth', (req, res) => {
+  console.log('Auth check:', {
+    session: req.session,
+    cookies: req.cookies,
+    headers: req.headers
+  });
+
+  if (req.session.userId) {
+    res.json({ authenticated: true });
+  } else {
+    res.status(401).json({ authenticated: false });
+  }
 });
 
 const PORT = process.env.PORT || 5000;
