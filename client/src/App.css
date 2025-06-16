@@ -1,0 +1,126 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f5f5f5;
+}
+
+.App {
+  min-height: 100vh;
+  width: 100%;
+  background-color: #e0e0e0;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.auth-form {
+  max-width: 400px;
+  margin: 40px auto;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+.problem-card {
+  height: 100%;
+}
+
+.problem-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 20px;
+  height: calc(100vh - 100px);
+}
+
+.problem-statement {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+}
+
+.problem-description {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.problem-description p {
+  margin-bottom: 12px;
+}
+
+.example-header {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-top: 20px !important;
+}
+
+.code-editor {
+  background: #1e1e1e;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.code-input {
+  width: 100%;
+  height: calc(100% - 100px);
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border: 1px solid #333;
+  border-radius: 4px;
+  resize: none;
+  font-family: 'Consolas', monospace;
+  padding: 15px;
+  font-size: 14px;
+  line-height: 1.5;
+  tab-size: 4;
+}
+
+.code-input:focus {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.25);
+}
+
+.output-section {
+  margin-top: 20px;
+}
+
+.output-section h4 {
+  margin-bottom: 10px;
+  color: #d4d4d4;
+}
+
+.output-section pre {
+  margin: 0;
+  padding: 0;
+  background: none;
+}
+
+.output-section code {
+  font-family: 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+} 
