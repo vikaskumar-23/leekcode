@@ -16,12 +16,33 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true
-}));
+
+// CORS configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Remove trailing slash if present
+    const cleanOrigin = origin?.replace(/\/$/, '');
+    const allowedOrigins = [
+      process.env.CLIENT_URL?.replace(/\/$/, ''),
+      'http://localhost:3000'
+    ];
+    
+    if (!origin || allowedOrigins.includes(cleanOrigin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+
+// Session configuration with MongoDB store
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
@@ -31,6 +52,7 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
+    sameSite: 'none', // Required for cross-origin requests
     maxAge: 24 * 60 * 60 * 1000 // Cookie max age in milliseconds (1 day)
   }
 }));
