@@ -33,28 +33,26 @@ function Login() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_URL}/api/login`, formData, {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      console.log('Attempting login with:', formData);
+      const response = await axios.post(`${API_URL}/api/login`, formData);
 
-      if (response.data.message === 'Logged in successfully') {
+      console.log('Login response:', response.data);
+      if (response.data.message === 'Login successful') {
         // Verify the session was set
-        const authCheck = await axios.get(`${API_URL}/api/check-auth`, {
-          withCredentials: true
-        });
+        const authCheck = await axios.get(`${API_URL}/api/check-auth`);
+        console.log('Auth check response:', authCheck.data);
         
         if (authCheck.data.authenticated) {
           navigate('/dashboard');
         } else {
           setError('Session not established. Please try again.');
         }
+      } else {
+        setError('Login failed. Please try again.');
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
+      setError(err.response?.data?.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }

@@ -27,6 +27,7 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
+    console.log('Request origin:', origin);
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -35,12 +36,24 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['set-cookie']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['set-cookie'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
 app.use(cookieParser());
+
+// Add logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`, {
+    headers: req.headers,
+    cookies: req.cookies,
+    body: req.body
+  });
+  next();
+});
 
 // Session configuration
 app.use(session({
@@ -92,21 +105,25 @@ app.post('/api/signup', async (req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
+  console.log('Login attempt:', req.body);
   try {
     const { username, password } = req.body;
     const user = await User.findOne({ username });
 
     if (!user) {
+      console.log('User not found:', username);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
+      console.log('Invalid password for user:', username);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Set user ID in session
     req.session.userId = user._id;
+    console.log('Session before save:', req.session);
 
     // Explicitly save session
     req.session.save((err) => {
@@ -114,6 +131,8 @@ app.post('/api/login', async (req, res) => {
         console.error('Session save error:', err);
         return res.status(500).json({ message: 'Error establishing session' });
       }
+
+      console.log('Session after save:', req.session);
 
       // Set cookie manually
       res.cookie('connect.sid', req.session.id, {
@@ -124,7 +143,11 @@ app.post('/api/login', async (req, res) => {
         domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
       });
 
-      res.json({ message: 'Login successful' });
+      console.log('Sending successful login response');
+      res.json({ 
+        message: 'Login successful',
+        user: { id: user._id, username: user.username }
+      });
     });
   } catch (error) {
     console.error('Login error:', error);
