@@ -1,46 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import axios from 'axios';
-import { API_URL } from '../config';
+
+// Configure axios to include credentials
+axios.defaults.withCredentials = true;
+
+// Get API URL from environment variable
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 function ProtectedRoute({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log('Checking authentication status...');
-        const response = await axios.get(`${API_URL}/api/check-auth`, {
-          withCredentials: true
-        });
-        console.log('Auth check response:', response.data);
-        setIsAuthenticated(response.data.authenticated);
-      } catch (error) {
-        console.error('Auth check error:', error);
+        await axios.get(`${API_URL}/api/check-auth`, { withCredentials: true });
+        setIsAuthenticated(true);
+      } catch (err) {
         setIsAuthenticated(false);
       }
     };
-
     checkAuth();
   }, []);
 
   if (isAuthenticated === null) {
-    return (
-      <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
-  if (!isAuthenticated) {
-    console.log('Not authenticated, redirecting to login...');
-    return <Navigate to="/login" replace />;
-  }
-
-  return children;
+  return isAuthenticated ? children : <Navigate to="/login" />;
 }
 
 export default ProtectedRoute; 

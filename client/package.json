@@ -7,9 +7,8 @@
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.6.7",
-    "bootstrap": "^5.3.2",
+    "bootstrap": "^5.3.3",
     "react": "^18.2.0",
-    "react-bootstrap": "^2.10.1",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.1",
     "react-scripts": "5.0.1",
@@ -18,7 +17,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "GENERATE_SOURCEMAP=false react-scripts build",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -26,11 +25,7 @@
     "extends": [
       "react-app",
       "react-app/jest"
-    ],
-    "rules": {
-      "import/first": "off",
-      "import/no-duplicates": "off"
-    }
+    ]
   },
   "browserslist": {
     "production": [

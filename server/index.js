@@ -6,7 +6,6 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const MongoStore = require('connect-mongo');
-const cookieParser = require('cookie-parser');
 
 const User = require('./models/User');
 const Problem = require('./models/Problem');
@@ -17,75 +16,41 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-
-// CORS configuration
-const allowedOrigins = [
-  'https://leekcode.vercel.app',
-  'https://leekcode-8xuy3e17u-acs-projects-ff555b9d.vercel.app',
-  'http://localhost:3000'
-];
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    console.log('Request origin:', origin);
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log('Origin not allowed:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['set-cookie'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-};
-
-app.use(cors(corsOptions));
-app.use(cookieParser());
-
-// Add logging middleware
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`, {
-    headers: req.headers,
-    cookies: req.cookies,
-    body: req.body,
-    origin: req.headers.origin
-  });
-  next();
-});
-
-// Session configuration
+app.use(cors({
+  origin: process.env.CLIENT_URL,
+  credentials: true
+}));
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
-    ttl: 24 * 60 * 60 // 1 day
+    ttl: 24 * 60 * 60 // Session TTL in seconds (1 day)
   }),
   cookie: {
-    secure: true,
+    secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: 'none',
-    maxAge: 24 * 60 * 60 * 1000, // 1 day
-    domain: process.env.NODE_ENV === 'production' ? 'leekcode.onrender.com' : undefined
+    maxAge: 24 * 60 * 60 * 1000 // Cookie max age in milliseconds (1 day)
   }
 }));
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/leakcode')
-  .then(async () => {
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
     console.log('Connected to MongoDB');
     // Seed problems if the collection is empty
-    const problemCount = await Problem.countDocuments();
-    if (problemCount === 0) {
-      await seedProblems();
+    return Problem.countDocuments();
+  })
+  .then(count => {
+    if (count === 0) {
+      return seedProblems();
     }
   })
-  .catch(err => console.error('MongoDB connection error:', err));
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+  });
 
 // JDoodle API configuration
 const JD_API_URL = 'https://api.jdoodle.com/v1/execute';
@@ -107,53 +72,20 @@ app.post('/api/signup', async (req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
-  console.log('Login attempt:', req.body);
   try {
     const { username, password } = req.body;
     const user = await User.findOne({ username });
-
     if (!user) {
-      console.log('User not found:', username);
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
-
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      console.log('Invalid password for user:', username);
-      return res.status(401).json({ message: 'Invalid credentials' });
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
-
-    // Set user ID in session
     req.session.userId = user._id;
-    console.log('Session before save:', req.session);
-
-    // Explicitly save session
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.status(500).json({ message: 'Error establishing session' });
-      }
-
-      console.log('Session after save:', req.session);
-
-      // Set cookie manually
-      res.cookie('connect.sid', req.session.id, {
-        secure: true,
-        httpOnly: true,
-        sameSite: 'none',
-        maxAge: 24 * 60 * 60 * 1000, // 1 day
-        domain: process.env.NODE_ENV === 'production' ? 'leekcode.onrender.com' : undefined
-      });
-
-      console.log('Sending successful login response');
-      res.json({ 
-        message: 'Login successful',
-        user: { id: user._id, username: user.username }
-      });
-    });
+    res.json({ message: 'Logged in successfully' });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(400).json({ error: error.message });
   }
 });
 
@@ -216,19 +148,8 @@ app.post('/api/execute', isAuthenticated, async (req, res) => {
 });
 
 // Check authentication status
-app.get('/api/check-auth', (req, res) => {
-  console.log('Auth check:', {
-    session: req.session,
-    cookies: req.cookies,
-    headers: req.headers,
-    origin: req.headers.origin
-  });
-
-  if (req.session.userId) {
-    res.json({ authenticated: true });
-  } else {
-    res.status(401).json({ authenticated: false });
-  }
+app.get('/api/check-auth', isAuthenticated, (req, res) => {
+  res.json({ authenticated: true });
 });
 
 const PORT = process.env.PORT || 5000;

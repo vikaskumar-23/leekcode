@@ -6,10 +6,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { API_URL } from '../config';
 
 // Configure axios to include credentials
 axios.defaults.withCredentials = true;
+
+// Get API URL from environment variable
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 function Dashboard() {
   const navigate = useNavigate();

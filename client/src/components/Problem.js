@@ -9,13 +9,15 @@ import axios from 'axios';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import cpp from 'react-syntax-highlighter/dist/esm/languages/hljs/cpp';
 import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs';
-import { API_URL } from '../config';
 
 // Register C++ language for syntax highlighting
 SyntaxHighlighter.registerLanguage('cpp', cpp);
 
 // Configure axios to include credentials
 axios.defaults.withCredentials = true;
+
+// Get API URL from environment variable
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 function Problem() {
   const { id } = useParams();
@@ -45,14 +47,12 @@ int main() {
     try {
       const response = await axios.get(`${API_URL}/api/problems/${id}`);
       setProblem(response.data);
-      setCode(defaultCode);
+      setCode(response.data.defaultCode || '');
+      setError('');
     } catch (err) {
-      setError('Failed to fetch problem');
-      if (err.response?.status === 401) {
-        navigate('/login');
-      }
+      setError('Failed to fetch problem. Please try again.');
     }
-  }, [id, navigate, defaultCode]);
+  }, [id]);
 
   // Fetch problem on component mount
   useEffect(() => {
@@ -62,18 +62,11 @@ int main() {
   // Handle code submission
   const handleSubmit = async () => {
     try {
-      setError('');
       const response = await axios.post(`${API_URL}/api/submit`, { code });
-      setOutput(response.data.code);
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      setOutput(response.data.output);
+      setError('');
     } catch (err) {
-      if (err.response?.status === 401) {
-        setError('Please login to submit code');
-        navigate('/login');
-      } else {
-        setError('Failed to submit code. Please try again.');
-      }
+      setError('Failed to submit code. Please try again.');
     }
   };
 
@@ -87,12 +80,7 @@ int main() {
       const response = await axios.post(`${API_URL}/api/execute`, { code });
       setExecutionResult(response.data);
     } catch (err) {
-      if (err.response?.status === 401) {
-        setError('Please login to run code');
-        navigate('/login');
-      } else {
-        setError('Failed to run code. Please try again.');
-      }
+      setError('Failed to execute code. Please try again.');
     } finally {
       setIsRunning(false);
     }
