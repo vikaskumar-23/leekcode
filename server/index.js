@@ -19,6 +19,32 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
+// CORS configuration - must come before session
+app.use(cors({
+  origin: process.env.CLIENT_URL,
+  credentials: true
+}));
+
+// Session configuration with MongoDB store
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    ttl: 24 * 60 * 60
+  }),
+  cookie: {
+    secure: true,
+    httpOnly: true,
+    sameSite: 'none',
+    maxAge: 24 * 60 * 60 * 1000
+  }
+}));
+
+// Trust proxy
+app.set('trust proxy', 1);
+
 // Debug middleware to log requests
 app.use((req, res, next) => {
   console.log('Request:', {
@@ -30,38 +56,6 @@ app.use((req, res, next) => {
   });
   next();
 });
-
-// CORS configuration
-app.use(cors({
-  origin: process.env.CLIENT_URL,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-  exposedHeaders: ['Set-Cookie']
-}));
-
-// Session configuration with MongoDB store
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: true,
-  saveUninitialized: true,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI,
-    ttl: 24 * 60 * 60 // Session TTL in seconds (1 day)
-  }),
-  cookie: {
-    secure: true, // Always true in production
-    httpOnly: true,
-    sameSite: 'none',
-    maxAge: 24 * 60 * 60 * 1000, // Cookie max age in milliseconds (1 day)
-    path: '/',
-    domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
-  },
-  name: 'sessionId' // Explicitly set session cookie name
-}));
-
-// Trust proxy (important for production)
-app.set('trust proxy', 1);
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI)
