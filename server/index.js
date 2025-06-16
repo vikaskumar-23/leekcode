@@ -31,6 +31,7 @@ const corsOptions = {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.log('Origin not allowed:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -50,7 +51,8 @@ app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`, {
     headers: req.headers,
     cookies: req.cookies,
-    body: req.body
+    body: req.body,
+    origin: req.headers.origin
   });
   next();
 });
@@ -218,7 +220,8 @@ app.get('/api/check-auth', (req, res) => {
   console.log('Auth check:', {
     session: req.session,
     cookies: req.cookies,
-    headers: req.headers
+    headers: req.headers,
+    origin: req.headers.origin
   });
 
   if (req.session.userId) {

@@ -11,6 +11,9 @@ axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 // Add request interceptor
 axios.interceptors.request.use(
   (config) => {
+    // Ensure credentials are sent with every request
+    config.withCredentials = true;
+    
     console.log('Making request:', {
       url: config.url,
       method: config.method,
@@ -52,5 +55,14 @@ axios.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Test the connection
+axios.get(`${API_URL}/api/check-auth`)
+  .then(response => {
+    console.log('Initial connection test successful:', response.data);
+  })
+  .catch(error => {
+    console.error('Initial connection test failed:', error);
+  });
 
 export { API_URL }; 
