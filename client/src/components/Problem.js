@@ -19,21 +19,8 @@ axios.defaults.withCredentials = true;
 // Get API URL from environment variable
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-function Problem() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  
-  // State management
-  const [problem, setProblem] = useState(null);
-  const [code, setCode] = useState('');
-  const [output, setOutput] = useState('');
-  const [error, setError] = useState('');
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
-  const [executionResult, setExecutionResult] = useState(null);
-
-  // Default C++ template
-  const defaultCode = `#include <iostream>
+// Default C++ template
+const DEFAULT_CODE = `#include <iostream>
 using namespace std;
 
 int main() {
@@ -42,17 +29,34 @@ int main() {
     return 0;
 }`;
 
+function Problem() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  
+  // State management
+  const [problem, setProblem] = useState(null);
+  const [code, setCode] = useState(DEFAULT_CODE);
+  const [output, setOutput] = useState('');
+  const [error, setError] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [executionResult, setExecutionResult] = useState(null);
+
   // Fetch problem details
   const fetchProblem = useCallback(async () => {
     try {
       const response = await axios.get(`${API_URL}/api/problems/${id}`);
       setProblem(response.data);
-      setCode(response.data.defaultCode || '');
+      // Only set code if it's not already set
+      if (!code || code === DEFAULT_CODE) {
+        setCode(response.data.defaultCode || DEFAULT_CODE);
+      }
       setError('');
     } catch (err) {
+      console.error('Error fetching problem:', err);
       setError('Failed to fetch problem. Please try again.');
     }
-  }, [id]);
+  }, [id, code]);
 
   // Fetch problem on component mount
   useEffect(() => {
@@ -62,10 +66,16 @@ int main() {
   // Handle code submission
   const handleSubmit = async () => {
     try {
-      const response = await axios.post(`${API_URL}/api/submit`, { code });
-      setOutput(response.data.output);
       setError('');
+      const response = await axios.post(`${API_URL}/api/submit`, { 
+        code,
+        problemId: id 
+      });
+      setOutput(response.data.output);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
     } catch (err) {
+      console.error('Error submitting code:', err);
       setError('Failed to submit code. Please try again.');
     }
   };
@@ -77,9 +87,13 @@ int main() {
       setError('');
       setExecutionResult(null);
       
-      const response = await axios.post(`${API_URL}/api/execute`, { code });
+      const response = await axios.post(`${API_URL}/api/execute`, { 
+        code,
+        problemId: id 
+      });
       setExecutionResult(response.data);
     } catch (err) {
+      console.error('Error executing code:', err);
       setError('Failed to execute code. Please try again.');
     } finally {
       setIsRunning(false);
@@ -112,6 +126,7 @@ int main() {
             onChange={(e) => setCode(e.target.value)}
             spellCheck="false"
             className="code-input"
+            placeholder={DEFAULT_CODE}
           />
           
           {/* Action Buttons */}
