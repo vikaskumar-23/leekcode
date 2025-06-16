@@ -6,6 +6,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const MongoStore = require('connect-mongo');
+const cookieParser = require('cookie-parser');
 
 const User = require('./models/User');
 const Problem = require('./models/Problem');
@@ -16,6 +17,7 @@ const app = express();
 
 // Middleware
 app.use(express.json());
+app.use(cookieParser());
 
 // Debug middleware to log requests
 app.use((req, res, next) => {
@@ -41,20 +43,25 @@ app.use(cors({
 // Session configuration with MongoDB store
 app.use(session({
   secret: process.env.SESSION_SECRET,
-  resave: true, // Changed to true for debugging
-  saveUninitialized: true, // Changed to true for debugging
+  resave: true,
+  saveUninitialized: true,
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
     ttl: 24 * 60 * 60 // Session TTL in seconds (1 day)
   }),
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: true, // Always true in production
     httpOnly: true,
-    sameSite: 'none', // Always set to none for cross-site requests
+    sameSite: 'none',
     maxAge: 24 * 60 * 60 * 1000, // Cookie max age in milliseconds (1 day)
-    path: '/'
-  }
+    path: '/',
+    domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
+  },
+  name: 'sessionId' // Explicitly set session cookie name
 }));
+
+// Trust proxy (important for production)
+app.set('trust proxy', 1);
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI)
@@ -105,9 +112,14 @@ app.post('/api/login', async (req, res) => {
     }
     req.session.userId = user._id;
     console.log('Login successful, session:', req.session);
+    
+    // Set additional headers for CORS
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL);
+    
     res.json({ 
       message: 'Logged in successfully',
-      sessionId: req.session.id // Include session ID in response for debugging
+      sessionId: req.session.id
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -176,6 +188,11 @@ app.post('/api/execute', isAuthenticated, async (req, res) => {
 // Check authentication status
 app.get('/api/check-auth', (req, res) => {
   console.log('Check auth session:', req.session);
+  
+  // Set additional headers for CORS
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL);
+  
   if (req.session.userId) {
     res.json({ authenticated: true, userId: req.session.userId });
   } else {
