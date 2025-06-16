@@ -15,7 +15,8 @@ axios.interceptors.request.use(
       url: config.url,
       method: config.method,
       headers: config.headers,
-      data: config.data
+      data: config.data,
+      withCredentials: config.withCredentials
     });
     return config;
   },
@@ -31,7 +32,8 @@ axios.interceptors.response.use(
     console.log('Response received:', {
       status: response.status,
       headers: response.headers,
-      data: response.data
+      data: response.data,
+      cookies: document.cookie
     });
     return response;
   },
@@ -39,7 +41,8 @@ axios.interceptors.response.use(
     console.error('Response error:', {
       status: error.response?.status,
       data: error.response?.data,
-      headers: error.response?.headers
+      headers: error.response?.headers,
+      cookies: document.cookie
     });
     
     if (error.response?.status === 401) {
