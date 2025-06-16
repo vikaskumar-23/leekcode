@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 // Configure axios to include credentials
 axios.defaults.withCredentials = true;
@@ -19,7 +20,7 @@ function Dashboard() {
   useEffect(() => {
     const fetchProblems = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/problems');
+        const response = await axios.get(`${API_URL}/api/problems`);
         setProblems(response.data);
         setError(''); // Clear any previous errors
       } catch (err) {
@@ -36,7 +37,7 @@ function Dashboard() {
   // Handle user logout
   const handleLogout = async () => {
     try {
-      await axios.post('http://localhost:5000/api/logout');
+      await axios.post(`${API_URL}/api/logout`);
       navigate('/login');
     } catch (err) {
       setError('Logout failed. Please try again.');

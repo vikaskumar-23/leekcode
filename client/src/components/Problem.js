@@ -9,6 +9,7 @@ import axios from 'axios';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import cpp from 'react-syntax-highlighter/dist/esm/languages/hljs/cpp';
 import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { API_URL } from '../config';
 
 // Register C++ language for syntax highlighting
 SyntaxHighlighter.registerLanguage('cpp', cpp);
@@ -42,7 +43,7 @@ int main() {
   // Fetch problem details
   const fetchProblem = useCallback(async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/problems/${id}`);
+      const response = await axios.get(`${API_URL}/api/problems/${id}`);
       setProblem(response.data);
       setCode(defaultCode);
     } catch (err) {
@@ -62,7 +63,7 @@ int main() {
   const handleSubmit = async () => {
     try {
       setError('');
-      const response = await axios.post('http://localhost:5000/api/submit', { code });
+      const response = await axios.post(`${API_URL}/api/submit`, { code });
       setOutput(response.data.code);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
@@ -83,7 +84,7 @@ int main() {
       setError('');
       setExecutionResult(null);
       
-      const response = await axios.post('http://localhost:5000/api/execute', { code });
+      const response = await axios.post(`${API_URL}/api/execute`, { code });
       setExecutionResult(response.data);
     } catch (err) {
       if (err.response?.status === 401) {
