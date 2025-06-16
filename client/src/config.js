@@ -6,14 +6,10 @@ const API_URL = process.env.REACT_APP_API_URL || 'https://leekcode.onrender.com'
 // Configure axios defaults
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
-axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
-// Add request interceptor
+// Add request interceptor for logging
 axios.interceptors.request.use(
   (config) => {
-    // Ensure credentials are sent with every request
-    config.withCredentials = true;
-    
     console.log('Making request:', {
       url: config.url,
       method: config.method,
@@ -29,14 +25,13 @@ axios.interceptors.request.use(
   }
 );
 
-// Add response interceptor
+// Add response interceptor for logging
 axios.interceptors.response.use(
   (response) => {
     console.log('Response received:', {
       status: response.status,
       headers: response.headers,
-      data: response.data,
-      cookies: document.cookie
+      data: response.data
     });
     return response;
   },
@@ -44,10 +39,8 @@ axios.interceptors.response.use(
     console.error('Response error:', {
       status: error.response?.status,
       data: error.response?.data,
-      headers: error.response?.headers,
-      cookies: document.cookie
+      message: error.message
     });
-    
     if (error.response?.status === 401) {
       // Handle unauthorized access
       window.location.href = '/login';
@@ -56,13 +49,19 @@ axios.interceptors.response.use(
   }
 );
 
-// Test the connection
-axios.get(`${API_URL}/api/check-auth`)
-  .then(response => {
-    console.log('Initial connection test successful:', response.data);
-  })
-  .catch(error => {
-    console.error('Initial connection test failed:', error);
-  });
+// Test API connection on startup
+const testConnection = async () => {
+  try {
+    console.log('Testing API connection...');
+    const response = await axios.get(`${API_URL}/api/check-auth`, {
+      withCredentials: true
+    });
+    console.log('API connection test result:', response.data);
+  } catch (error) {
+    console.error('API connection test failed:', error);
+  }
+};
+
+testConnection();
 
 export { API_URL }; 
