@@ -54,9 +54,12 @@ app.use(session({
     httpOnly: true,
     sameSite: 'none',
     maxAge: 24 * 60 * 60 * 1000, // 1 day
-    domain: '.vercel.app' // Allow cookies on all Vercel subdomains
+    domain: '.onrender.com' // Change to match your backend domain
   }
 }));
+
+// Add cookie parser middleware
+app.use(require('cookie-parser')());
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/leakcode')
@@ -112,6 +115,15 @@ app.post('/api/login', async (req, res) => {
         console.error('Session save error:', err);
         return res.status(500).json({ error: 'Failed to establish session' });
       }
+      
+      // Set cookie manually
+      res.cookie('connect.sid', req.session.id, {
+        secure: true,
+        httpOnly: true,
+        sameSite: 'none',
+        domain: '.onrender.com',
+        maxAge: 24 * 60 * 60 * 1000
+      });
       
       // Verify session was set
       if (req.session.userId) {

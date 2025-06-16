@@ -8,6 +8,17 @@ axios.defaults.baseURL = API_URL;
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 
+// Add request interceptor to ensure credentials are sent
+axios.interceptors.request.use(
+  config => {
+    config.withCredentials = true;
+    return config;
+  },
+  error => {
+    return Promise.reject(error);
+  }
+);
+
 // Add response interceptor for better error handling
 axios.interceptors.response.use(
   response => response,
