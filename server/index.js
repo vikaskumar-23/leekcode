@@ -129,7 +129,7 @@ app.post('/api/logout', (req, res) => {
 // Problem Routes
 app.get('/api/problems', async (req, res) => {
   try {
-    const problems = await Problem.find({}, 'title description difficulty');
+    const problems = await Problem.find({}, 'title description');
     res.json(problems);
   } catch (error) {
     res.status(500).json({ error: error.message });
