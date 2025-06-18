@@ -5,6 +5,9 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
+const path = require('path');
+const { exec, execFile } = require('child_process');
 
 const User = require('./models/User');
 const Problem = require('./models/Problem');
@@ -35,13 +38,6 @@ app.use((req, res, next) => {
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('Connected to MongoDB');
-    // Seed problems if the collection is empty
-    return Problem.countDocuments();
-  })
-  .then(count => {
-    if (count === 0) {
-      return seedProblems();
-    }
   })
   .catch(err => {
     console.error('MongoDB connection error:', err);
@@ -161,6 +157,95 @@ app.post('/api/execute', authMiddleware, async (req, res) => {
 // Check authentication status
 app.get('/api/check-auth', authMiddleware, (req, res) => {
   res.json({ authenticated: true, userId: req.user.userId });
+});
+
+// Local C++ Judge Endpoint
+app.post('/api/local-judge', authMiddleware, async (req, res) => {
+  const { code, input = '', expectedOutput = '' } = req.body;
+  const tempDir = path.join(__dirname, 'temp');
+  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+  const filename = `main_${Date.now()}_${Math.random().toString(36).slice(2)}.cpp`;
+  const filepath = path.join(tempDir, filename);
+  const exePath = filepath.replace(/\.cpp$/, process.platform === 'win32' ? '.exe' : '');
+
+  try {
+    // Write code to file
+    fs.writeFileSync(filepath, code);
+
+    // Compile the code
+    await new Promise((resolve, reject) => {
+      exec(`g++ "${filepath}" -o "${exePath}"`, (err, stdout, stderr) => {
+        if (err) return reject(stderr || stdout || err.message);
+        resolve();
+      });
+    });
+
+    // Run the executable with input
+    await new Promise((resolve, reject) => {
+      const child = execFile(exePath, { timeout: 5000 }, (err, stdout, stderr) => {
+        // Clean up files with delay and error handling (Windows EBUSY fix)
+        setTimeout(() => {
+          try { if (fs.existsSync(filepath)) fs.unlinkSync(filepath); } catch (e) {}
+          try { if (fs.existsSync(exePath)) fs.unlinkSync(exePath); } catch (e) {}
+        }, 500);
+        if (err) {
+          return res.json({
+            output: stdout,
+            error: stderr || err.message,
+            match: false
+          });
+        }
+        // Normalize output for comparison
+        const actual = stdout.trim().replace(/\r\n/g, '\n');
+        const expected = (expectedOutput || '').trim().replace(/\r\n/g, '\n');
+        res.json({
+          output: stdout,
+          error: stderr,
+          match: actual === expected
+        });
+        resolve();
+      });
+      if (input) {
+        child.stdin.write(input);
+      }
+      child.stdin.end();
+    });
+  } catch (error) {
+    // Clean up files if error
+    if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+    if (fs.existsSync(exePath)) fs.unlinkSync(exePath);
+    res.status(500).json({ error: error.toString() });
+  }
+});
+
+// Save code for a problem (auto-save)
+app.post('/api/save-code', authMiddleware, async (req, res) => {
+  const { problemId, code } = req.body;
+  if (!problemId || typeof code !== 'string') {
+    return res.status(400).json({ error: 'problemId and code are required' });
+  }
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    user.savedCode.set(problemId, code);
+    await user.save();
+    res.json({ message: 'Code saved' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save code' });
+  }
+});
+
+// Get saved code for a problem
+app.get('/api/get-code/:problemId', authMiddleware, async (req, res) => {
+  const { problemId } = req.params;
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const code = user.savedCode.get(problemId) || '';
+    res.json({ code });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to get code' });
+  }
 });
 
 const PORT = process.env.PORT || 5000;

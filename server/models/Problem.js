@@ -10,6 +10,12 @@ const problemSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  testCases: [
+    {
+      input: String,
+      expectedOutput: String
+    }
+  ],
   createdAt: {
     type: Date,
     default: Date.now
