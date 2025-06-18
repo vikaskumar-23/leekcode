@@ -13,9 +13,6 @@ import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 // Register C++ language for syntax highlighting
 SyntaxHighlighter.registerLanguage('cpp', cpp);
 
-// Configure axios to include credentials
-axios.defaults.withCredentials = true;
-
 // Get API URL from environment variable
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -67,9 +64,14 @@ function Problem() {
   const handleSubmit = async () => {
     try {
       setError('');
+      const token = localStorage.getItem('token');
       const response = await axios.post(`${API_URL}/api/submit`, { 
         code,
         problemId: id 
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
       setOutput(response.data.output);
       setShowSuccess(true);
@@ -86,10 +88,14 @@ function Problem() {
       setIsRunning(true);
       setError('');
       setExecutionResult(null);
-      
+      const token = localStorage.getItem('token');
       const response = await axios.post(`${API_URL}/api/execute`, { 
         code,
         problemId: id 
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
       setExecutionResult(response.data);
     } catch (err) {

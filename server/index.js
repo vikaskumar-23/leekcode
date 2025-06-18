@@ -1,57 +1,31 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const session = require('express-session');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
-const MongoStore = require('connect-mongo');
-const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
 
 const User = require('./models/User');
 const Problem = require('./models/Problem');
-const { isAuthenticated } = require('./middleware/auth');
 const seedProblems = require('./seed/problems');
 
 const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cookieParser());
 
-// CORS configuration - must come before session
+// CORS configuration
 app.use(cors({
   origin: process.env.CLIENT_URL,
   credentials: true
 }));
-
-// Session configuration with MongoDB store
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI,
-    ttl: 24 * 60 * 60
-  }),
-  cookie: {
-    secure: true,
-    httpOnly: true,
-    sameSite: 'none',
-    maxAge: 24 * 60 * 60 * 1000
-  }
-}));
-
-// Trust proxy
-app.set('trust proxy', 1);
 
 // Debug middleware to log requests
 app.use((req, res, next) => {
   console.log('Request:', {
     method: req.method,
     path: req.path,
-    cookies: req.cookies,
-    session: req.session,
     headers: req.headers
   });
   next();
@@ -79,6 +53,22 @@ const JD_API_URL = 'https://api.jdoodle.com/v1/execute';
 const JD_CLIENT_ID = process.env.JDOODLE_CLIENT_ID;
 const JD_CLIENT_SECRET = process.env.JDOODLE_CLIENT_SECRET;
 
+// JWT Auth Middleware
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
 // Auth Routes
 app.post('/api/signup', async (req, res) => {
   try {
@@ -86,8 +76,8 @@ app.post('/api/signup', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ username, password: hashedPassword });
     await user.save();
-    req.session.userId = user._id;
-    res.json({ message: 'User created successfully' });
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    res.json({ message: 'User created successfully', token });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -104,17 +94,8 @@ app.post('/api/login', async (req, res) => {
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    req.session.userId = user._id;
-    console.log('Login successful, session:', req.session);
-    
-    // Set additional headers for CORS
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL);
-    
-    res.json({ 
-      message: 'Logged in successfully',
-      sessionId: req.session.id
-    });
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    res.json({ message: 'Logged in successfully', token });
   } catch (error) {
     console.error('Login error:', error);
     res.status(400).json({ error: error.message });
@@ -122,7 +103,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 app.post('/api/logout', (req, res) => {
-  req.session.destroy();
+  // For JWT, logout is handled on the client by deleting the token
   res.json({ message: 'Logged out successfully' });
 });
 
@@ -149,16 +130,15 @@ app.get('/api/problems/:id', async (req, res) => {
 });
 
 // Code Submission Route
-app.post('/api/submit', isAuthenticated, (req, res) => {
+app.post('/api/submit', authMiddleware, (req, res) => {
   const { code } = req.body;
   res.json({ code });
 });
 
 // Code execution endpoint
-app.post('/api/execute', isAuthenticated, async (req, res) => {
+app.post('/api/execute', authMiddleware, async (req, res) => {
   try {
     const { code } = req.body;
-    
     const response = await axios.post(JD_API_URL, {
       clientId: JD_CLIENT_ID,
       clientSecret: JD_CLIENT_SECRET,
@@ -166,7 +146,6 @@ app.post('/api/execute', isAuthenticated, async (req, res) => {
       language: 'cpp',
       versionIndex: '4' // C++ 14
     });
-
     res.json({
       output: response.data.output,
       statusCode: response.data.statusCode,
@@ -180,18 +159,8 @@ app.post('/api/execute', isAuthenticated, async (req, res) => {
 });
 
 // Check authentication status
-app.get('/api/check-auth', (req, res) => {
-  console.log('Check auth session:', req.session);
-  
-  // Set additional headers for CORS
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL);
-  
-  if (req.session.userId) {
-    res.json({ authenticated: true, userId: req.session.userId });
-  } else {
-    res.status(401).json({ error: 'Not authenticated' });
-  }
+app.get('/api/check-auth', authMiddleware, (req, res) => {
+  res.json({ authenticated: true, userId: req.user.userId });
 });
 
 const PORT = process.env.PORT || 5000;

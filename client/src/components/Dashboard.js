@@ -7,9 +7,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-// Configure axios to include credentials
-axios.defaults.withCredentials = true;
-
 // Get API URL from environment variable
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -21,8 +18,13 @@ function Dashboard() {
   // Fetch problems on component mount
   useEffect(() => {
     const fetchProblems = async () => {
+      const token = localStorage.getItem('token');
       try {
-        const response = await axios.get(`${API_URL}/api/problems`);
+        const response = await axios.get(`${API_URL}/api/problems`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         setProblems(response.data);
         setError(''); // Clear any previous errors
       } catch (err) {
@@ -39,7 +41,7 @@ function Dashboard() {
   // Handle user logout
   const handleLogout = async () => {
     try {
-      await axios.post(`${API_URL}/api/logout`);
+      localStorage.removeItem('token');
       navigate('/login');
     } catch (err) {
       setError('Logout failed. Please try again.');

@@ -13,8 +13,17 @@ function ProtectedRoute({ children }) {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setIsAuthenticated(false);
+        return;
+      }
       try {
-        await axios.get(`${API_URL}/api/check-auth`, { withCredentials: true });
+        await axios.get(`${API_URL}/api/check-auth`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         setIsAuthenticated(true);
       } catch (err) {
         setIsAuthenticated(false);

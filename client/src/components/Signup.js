@@ -7,9 +7,6 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
-// Configure axios to include credentials
-axios.defaults.withCredentials = true;
-
 // Get API URL from environment variable
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -40,11 +37,17 @@ function Signup() {
     }
 
     try {
-      await axios.post(`${API_URL}/api/signup`, {
+      const response = await axios.post(`${API_URL}/api/signup`, {
         username: formData.username,
         password: formData.password
       });
-      navigate('/login');
+      // Store JWT token in localStorage if present
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        navigate('/dashboard');
+      } else {
+        navigate('/login');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Signup failed. Please try again.');
     }

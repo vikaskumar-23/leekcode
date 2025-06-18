@@ -35,17 +35,13 @@ function Login() {
 
     try {
       const response = await axios.post(`${API_URL}/api/login`, formData, {
-        withCredentials: true,
         headers: {
           'Content-Type': 'application/json'
         }
       });
-      console.log('Login response:', response.data);
-      
-      // Wait a bit to ensure cookie is set
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 100);
+      // Store JWT token in localStorage
+      localStorage.setItem('token', response.data.token);
+      navigate('/dashboard');
     } catch (err) {
       console.error('Login error:', err);
       setError(err.response?.data?.error || 'Login failed. Please try again.');
